@@ -1,0 +1,23 @@
+﻿{
+  "question": "Show the name and capacity of each stadium hosting concerts in 2014, sorted by concert count descending.",
+  "relevant_tables": ["stadium", "concert"],
+  "selected_exemplars": [
+    {
+      "question": "Count concerts per stadium grouped by stadium ID and ordered by count descending.",
+      "query": "SELECT Stadium_ID, count(*) FROM concert GROUP BY Stadium_ID ORDER BY count(*) DESC"
+    },
+    {
+      "question": "List the names of all stadiums joined with their concert records where year is 2014.",
+      "query": "SELECT T1.Name, T2.Year FROM stadium AS T1 JOIN concert AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T2.Year = '2014'"
+    }
+  ],
+  "portfolio_sinr": 0.8333,
+  "generated_sql": "SELECT T1.Name, T1.Capacity FROM stadium AS T1 JOIN concert AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T2.Year = '2014' GROUP BY T1.Stadium_ID ORDER BY count(*) DESC",
+  "execution_status": "SUCCESS",
+  "self_corrections": 0,
+  "result_rows": [
+    ["Stade de France", 81338],
+    ["Wembley Stadium", 90000],
+    ["Camp Nou", 99354]
+  ]
+}

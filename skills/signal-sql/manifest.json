@@ -1,0 +1,42 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "signal-sql",
+  "version": "1.0.0",
+  "displayName": "Signal-SQL: Expert Text-to-SQL & Self-Healing Skill",
+  "description": "High-precision Text-to-SQL generation, MCTS exemplar selection, and sandboxed self-correction powered by Signal Detection Theory.",
+  "author": "huohuo0212",
+  "homepage": "https://github.com/huohuo0212/Signal-SQL-Agent",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/huohuo0212/Signal-SQL-Agent.git"
+  },
+  "license": "MIT",
+  "tags": [
+    "text-to-sql",
+    "agent-skill",
+    "prompt-engineering",
+    "mcts",
+    "database",
+    "self-correction",
+    "sqlite",
+    "spider-benchmark"
+  ],
+  "entrypoint": "SKILL.md",
+  "tools": [
+    {
+      "name": "select_exemplars",
+      "script": "scripts/select_exemplars.py",
+      "description": "Select the best complementary few-shot SQL examples using MCTS and SINR"
+    },
+    {
+      "name": "sandbox_exec",
+      "script": "scripts/sandbox_exec.py",
+      "description": "Execute SQL in an isolated read-only SQLite sandbox with error diagnosis"
+    },
+    {
+      "name": "self_correct",
+      "script": "scripts/self_correct.py",
+      "description": "Automatically diagnose execution errors and repair SQL syntax or schema hallucinations"
+    }
+  ]
+}
