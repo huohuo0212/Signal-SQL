@@ -1,4 +1,4 @@
-﻿# Signal-SQL: Signal Detection & MCTS-Driven Example Selection for Text-to-SQL
+﻿# Signal-SQL: Signal Detection & MCTS-Driven Text-to-SQL Multi-Agent System
 
 <div align="center">
 
@@ -8,9 +8,9 @@
 [![Benchmark: BIRD](https://img.shields.io/badge/Benchmark-BIRD-orange.svg)](https://bird-bench.github.io/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/huohuo0212/Signal-SQL/pulls)
 
-**An advanced In-Context Learning (ICL) and prompt engineering framework for Text-to-SQL, powered by Signal Detection Theory, CFAR clutter calibration, analytic SINR reward, and Monte Carlo Tree Search (MCTS) combinatorial optimization.**
+**An advanced Text-to-SQL Multi-Agent System and In-Context Learning (ICL) framework powered by Signal Detection Theory, CFAR clutter calibration, analytic SINR reward, MCTS combinatorial optimization, and closed-loop sandbox self-correction.**
 
-[English](#features) | [中文说明](#核心创新点) | [快速上手 Quick Start](#quick-start) | [基准评测 Benchmark](#experimental-results)
+[Overview](#-overview--项目简介) | [Agent Workflow](#-signal-sql-agent-workflow--智能体架构) | [Quick Start](#-quick-start--快速上手) | [Benchmark](#-experimental-results--实验表现)
 
 </div>
 
@@ -21,67 +21,61 @@
 In Few-Shot In-Context Learning for Text-to-SQL, the **quality and diversity of demonstration examples** play a decisive role in model accuracy. Traditional selection methods (such as BM25, Euclidean Distance, or naive Cosine Similarity) suffer from three critical bottlenecks:
 1. **Entity Bias & Semantic Drift**: Embeddings overfit to superficial domain nouns (e.g. "student", "stadium") rather than underlying SQL relational operations (`JOIN`, `GROUP BY`, `HAVING`).
 2. **High Intra-Subset Redundancy**: Greedily selecting Top-$k$ nearest neighbors often yields near-duplicate examples that waste context window tokens without offering complementary guidance.
-3. **Multi-Clause Blindspot**: Complex natural language queries require multiple relational steps. A single retrieved example rarely covers all needed clauses, while greedy selection fails to form an orthogonal portfolio.
+3. **Missing Feedback & Execution Blindness**: Pure prompt-based generation fails immediately upon syntax errors, missing columns, or database runtime exceptions without self-healing.
 
-**Signal-SQL** resolves these bottlenecks by formulating Few-Shot selection as a **Signal Detection and Combinatorial Search** problem:
+**Signal-SQL** resolves these bottlenecks by transforming prompt engineering into a **Multi-Agent Collaboration & Signal-Optimized Search** system:
 - **Pre-whitening Filter**: Decorrelates dense embedding dimensions to eliminate colored background noise.
 - **CFAR Detection**: Calibrates dynamic clutter thresholds via cross-domain hard negative mining.
-- **Hybrid Atomic Decomposition**: Breaks complex queries into atomic sub-intents via LLM and builds a dual-channel (BM25 + Dense) pool.
+- **Hybrid Atomic Decomposition**: Breaks complex queries into atomic sub-intents and builds a dual-channel (BM25 + Dense) pool.
 - **Analytic SINR Reward**: Evaluates Signal Coverage ($E_{\text{match}}$), Redundant Noise ($E_{\text{noise}}$), and Intra-Subset Interference ($E_{\text{inter}}$) with zero LLM rollout cost.
-- **MCTS Optimization**: Employs Monte Carlo Tree Search to discover the globally optimal, mutually complementary example portfolio.
+- **MCTS Combinatorial Optimization**: Discovers the globally optimal, mutually complementary example portfolio.
+- **Agentic Sandbox & Self-Correction**: Safely executes SQL in an isolated database sandbox, intercepting runtime errors and invoking an intelligent Refiner loop to self-heal schema hallucinations.
 
 ---
 
-## 🚀 Core Architecture / 核心架构
+## 🤖 Signal-SQL-Agent Workflow / 智能体架构
 
 ```mermaid
 flowchart TD
-    subgraph Input ["1. Input Target"]
-        Q["User Question + Schema Linking"]
+    UserQ([User Question]) --> Planner[1. Planner Node\nSchema Discovery & Intent Analysis]
+    
+    subgraph SignalMemory ["Signal-SQL Memory Engine"]
+        W["Pre-whitening Filter W = C^(-1/2)"]
+        CFAR["CFAR Clutter Threshold"]
+        SINR["Analytic SINR Reward Function"]
+        MCTS["MCTS Combinatorial Search"]
+        W --> CFAR --> SINR --> MCTS
     end
 
-    subgraph SignalProcessing ["2. Signal Detection & Calibration"]
-        W["Covariance Pre-whitening W = C^(-1/2)"]
-        CFAR["CFAR Clutter Threshold Calibration"]
-        Q --> W
-        W --> CFAR
+    Planner --> SignalMemory
+    SignalMemory --> Generator[2. Generator Node\nInjected Optimal Few-Shot SQL]
+    
+    subgraph Sandbox ["Database Sandbox Execution & Healing"]
+        Executor[3. Executor Node\nSandboxed SQLite Execution]
+        Refiner[4. Refiner Node\nSelf-Correction & Schema Repair]
+        
+        Generator --> Executor
+        Executor -- "OperationalError / Syntax Error" --> Refiner
+        Refiner -- "Retry with Fixed SQL (Max 3 attempts)" --> Executor
     end
 
-    subgraph CandidatePool ["3. Hybrid Pooling & Atomic Decomposition"]
-        BM25["BM25 Lexical Retrieval"]
-        Dense["Pre-whitened Dense Retrieval"]
-        Decomp["LLM Atomic Sub-query Decomposition"]
-        CFAR --> BM25
-        CFAR --> Dense
-        CFAR --> Decomp
-        BM25 & Dense & Decomp --> Pool["Candidate Pool C (Zipper Merge)"]
-    end
-
-    subgraph MCTS_SINR ["4. Combinatorial Optimization (MCTS + SINR)"]
-        MCTS_Node["MCTS State Search (UCT Selection)"]
-        SINR["Analytic SINR Reward: E_match / (1 + λ1·E_noise + λ2·E_inter)"]
-        Pool --> MCTS_Node
-        MCTS_Node <--> SINR
-        MCTS_Node --> BestSub["Optimal Few-Shot Portfolio S*"]
-    end
-
-    subgraph PromptFactory ["5. Disentangled Prompt Assembly"]
-        Repr["SQL DDL Representation"]
-        Format["QA / ONLYSQL Formatting"]
-        BestSub --> PromptFactoryEngine["prompt_factory"]
-        Repr --> PromptFactoryEngine
-        Format --> PromptFactoryEngine
-        PromptFactoryEngine --> FinalPrompt["Final Few-Shot Prompt"]
-    end
-
-    FinalPrompt --> LLM["Target LLM (GPT-4 / Claude / DeepSeek)"]
+    Executor -- "Success (Fetched Rows)" --> Visualizer[5. Visualizer Node\nMarkdown Table & Insight Formatting]
+    Visualizer --> Output([Verified SQL + Formatted Data + Business Insights])
 ```
+
+### Multi-Agent Roles
+1. **`PlannerNode`**: Discovers schema DDLs, foreign key paths, and prunes tables based on semantic intent.
+2. **`SignalMemoryNode`**: Employs MCTS + SINR to select mutually orthogonal, complementary few-shot examples from the memory bank.
+3. **`GeneratorNode`**: Synthesizes the optimized prompt and calls the LLM for candidate SQL generation.
+4. **`ExecutorNode`**: Executes queries in a read-only sandboxed environment with timeout protection.
+5. **`RefinerNode`**: Self-correction engine that parses execution tracebacks and repairs schema hallucinations (e.g. column typos, table mismatches).
+6. **`VisualizerNode`**: Renders verified data into formatted Markdown tables with execution metadata.
 
 ---
 
-## 🔬 Analytic SINR Reward Function / 信干噪比奖励函数
+## 🔬 Analytic SINR Reward Function / 信干噪比公式
 
-Rather than invoking expensive LLM calls during search, Signal-SQL evaluates candidate subsets $S$ in microseconds via an analytic SINR formulation:
+Instead of relying on slow, expensive LLM rollouts during candidate selection, Signal-SQL evaluates example portfolios $S$ in microseconds via an analytic SINR formula:
 
 $$R(S) = \frac{E_{\text{match}}(S, x)}{1 + \lambda_1 E_{\text{noise}}(S, x) + \lambda_2 E_{\text{inter}}(S)}$$
 
@@ -89,7 +83,7 @@ $$R(S) = \frac{E_{\text{match}}(S, x)}{1 + \lambda_1 E_{\text{noise}}(S, x) + \l
   $$E_{\text{match}} = \frac{|\text{Feat}(x) \cap (\bigcup_{e \in S} \text{Feat}(e))|}{|\text{Feat}(x)|}$$
 - **Noise Energy ($E_{\text{noise}}$)**: Redundant SQL logic present in candidates but unneeded by target $x$:
   $$E_{\text{noise}} = \frac{\sum_{e \in S} |\text{Feat}(e) - \text{Feat}(x)|}{\text{Total Features}}$$
-- **Interference Energy ($E_{\text{inter}}$)**: Intra-subset redundancy (cosine similarity $> 0.9$) plus SQL coding style inconsistency (case, table aliases, quotation styles):
+- **Interference Energy ($E_{\text{inter}}$)**: Intra-subset redundancy (cosine similarity $> 0.9$) plus SQL coding style inconsistency:
   $$E_{\text{inter}} = \frac{1}{\binom{n}{2}} \sum_{i<j} \left( \text{Sim}_{\cos}(e_i, e_j) + \mathbb{I}[\text{Style}(e_i) \neq \text{Style}(e_j)] \right)$$
 
 ---
@@ -97,8 +91,17 @@ $$R(S) = \frac{E_{\text{match}}(S, x)}{1 + \lambda_1 E_{\text{noise}}(S, x) + \l
 ## 🛠️ Project Structure / 目录结构
 
 ```text
-├── llm/
-│   └── chatgpt.py                 # OpenAI / OpenRouter API client with exponential backoff
+├── agent/                         # [NEW] Multi-Agent System Core
+│   ├── state.py                   # Typed AgentState context flow
+│   ├── tools.py                   # DatabaseSandbox & SchemaExplorer
+│   ├── workflow.py                # SignalSQLAgent state machine orchestrator
+│   └── nodes/                     # Multi-Agent specialized nodes
+│       ├── planner.py             # Schema discovery & query planner
+│       ├── signal_memory.py       # Signal-SQL Few-Shot retrieval bridge
+│       ├── generator.py           # SQL generator
+│       ├── executor.py            # Sandboxed SQL execution
+│       ├── refiner.py             # Error diagnosis & self-correction loop
+│       └── visualizer.py          # Markdown table & insight formatter
 ├── prompt/
 │   ├── PromptReprTemplate.py      # 18 schema representation styles (SQL DDL, Text, CoT, CBR, etc.)
 │   ├── ExampleFormatTemplate.py   # Example format styles (QA, ONLYSQL, COMPLETE, QAWRULE, etc.)
@@ -114,8 +117,8 @@ $$R(S) = \frac{E_{\text{match}}(S, x)}{1 + \lambda_1 E_{\text{noise}}(S, x) + \l
 │   ├── post_process.py            # SQL execution accuracy & multi-set equivalence checker
 │   ├── enums.py                   # Enums (REPR_TYPE, SELECTOR_TYPE, EXAMPLE_TYPE, LLM)
 │   └── linking_utils/             # 5-gram & CoreNLP schema linking utilities
-├── results/                       # Experimental logs and prediction outputs
-├── run_demo.py                    # Zero-dataset standalone demo (Runs out of the box!)
+├── run_agent_demo.py              # [NEW] Multi-Agent self-correction demo (Runs out of the box!)
+├── run_demo.py                    # Standalone Prompt & MCTS demo
 ├── main.py                        # Unified CLI entrypoint for benchmark evaluation
 ├── requirements.txt               # Pinned Python package dependencies
 ├── .env.example                   # Environment configuration template
@@ -129,106 +132,76 @@ $$R(S) = \frac{E_{\text{match}}(S, x)}{1 + \lambda_1 E_{\text{noise}}(S, x) + \l
 ### 1. Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/huohuo0212/Signal-SQL.git
 cd Signal-SQL
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Run Instant Demo (10 Seconds, No Dataset Download Required)
+### 2. Run Multi-Agent Self-Correction Demo (Recommended)
 
-Experience feature extraction, SINR evaluation, MCTS search, and prompt assembly instantly:
+Run the end-to-end Multi-Agent pipeline demonstrating **dynamic schema inspection, Signal-SQL exemplar retrieval, sandbox execution, error interception, and automated self-correction**:
 
 ```bash
-python run_demo.py
+python run_agent_demo.py
 ```
 
-Sample output:
+*Sample Terminal Output:*
 ```text
-======================================================================
-        Signal-SQL: Few-Shot Example Selection Demo
-======================================================================
-[1] Target Question: Show the name and capacity of each stadium hosting concerts in 2014, sorted by concert count descending.
-    Target SQL:      SELECT T1.Name, T1.Capacity FROM stadium AS T1 JOIN concert AS T2 ON ...
-    Extracted SQL Features: ['*', '=', 'count', 'desc', 'from', 'group by', 'join', 'order by', 'select', 'where']
+[Agent: Planner] Identified relevant tables: ['stadium', 'concert']
+[Agent: Signal-Memory] Invoking MCTS & SINR to select optimal complementary few-shot examples...
+[Agent: Signal-Memory] Retrieved 2 shots (Portfolio SINR: 0.8333)
+[Agent: Generator] Generated SQL: SELECT T1.Name, T1.Capacity FROM stadium AS T1 JOIN concert AS T2...
+[Agent: Executor] Executing SQL in database sandbox (Attempt 1)...
+[Agent: Executor] Execution successful! Fetched 3 rows.
+[Agent: Visualizer] Formatting markdown table and synthesizing final response...
 
-[2] Candidate Pool Size: 6 examples
-[3] Evaluating Candidate Set with SINR Reward & MCTS...
-[4] MCTS Search Result:
-    Selected Optimal Indices: [3, 2]
-    Final Portfolio SINR:     0.9302
-    Selected Complementary Examples:
-      Shot 1: [Idx 3] "Count concerts per stadium grouped by stadium ID and ordered by count descending."
-              SQL: SELECT Stadium_ID, count(*) FROM concert GROUP BY Stadium_ID ORDER BY count(*) DESC
-      Shot 2: [Idx 2] "List the names of all stadiums joined with their concert records where year is 2014."
-              SQL: SELECT T1.Name, T2.Year FROM stadium AS T1 JOIN concert AS T2 ON T1.Stadium_ID = T2.Stadium_ID WHERE T2.Year = '2014'
-
-[5] Generating Assembled ICL Prompt:
-...
-[OK] Demo executed successfully! Signal-SQL pipeline is ready.
+--- [Scenario 2: Automatic Self-Correction] ---
+[Agent: Generator] [Fault Injection] Injected unverified SQL: SELECT Names, Capacities FROM stadium...
+[Agent: Executor] [!] Execution Error: SQL OperationalError: no such column: Names
+[Agent: Refiner] Analyzing error trace and diagnosing root cause...
+[Agent: Refiner] Repaired SQL: SELECT Name, Capacities FROM stadium WHERE Capacities > 85000
+[Agent: Executor] [!] Execution Error: SQL OperationalError: no such column: Capacities
+[Agent: Refiner] Analyzing error trace and diagnosing root cause...
+[Agent: Refiner] Repaired SQL: SELECT Name, Capacity FROM stadium WHERE Capacity > 85000
+[Agent: Executor] Execution successful! Fetched 2 rows.
+*Executed successfully via Signal-SQL-Agent sandbox (Self-corrections: 2, Portfolio SINR: 0.7586)*
 ```
 
-### 3. Python API Integration
+### 3. Python Multi-Agent API
 
 ```python
-from prompt.prompt_builder import prompt_factory
-from utils.enums import REPR_TYPE, SELECTOR_TYPE, EXAMPLE_TYPE
-from utils.data_builder import load_data
+from agent import SignalSQLAgent
 
-# 1. Load dataset (Spider / BIRD)
-data = load_data("spider", "./dataset")
-
-# 2. Build customized ICL Prompt class
-PromptClass = prompt_factory(
-    repr_type=REPR_TYPE.CODE_REPRESENTATION,         # "SQL" (DDL schema)
-    k_shot=7,                                        # 7-shot demonstration
-    example_format=EXAMPLE_TYPE.QA,                  # "QA" pair style
-    selector_type=SELECTOR_TYPE.SIGNAL_DETECTION     # Signal-SQL Selector
+# Initialize Agent with local or remote database
+agent = SignalSQLAgent(
+    db_path="path/to/database.sqlite",
+    model="gpt-4",
+    max_iterations=3,
+    verbose=True
 )
 
-# 3. Instantiate and format
-builder = PromptClass(data=data)
-target_question = data.get_test_json()[0]
-prompt_info = builder.format(target=target_question, max_seq_len=4096, max_ans_len=512, scope_factor=1)
+# Run interactive workflow
+state = agent.run("Find the average capacity of all stadiums hosting concerts in 2014.")
 
-print(prompt_info["prompt"])
-```
-
-### 4. Benchmark Evaluation via CLI
-
-Configure API keys in `.env` or export environment variables:
-```bash
-cp .env.example .env
-# Edit .env to set OPENAI_API_KEY
-```
-
-Inspect generated prompts:
-```bash
-python main.py --run_mode prompt_only --dataset spider --selector_type SIGNAL_DETECTION --k_shot 7
-```
-
-Run full GPT-4 evaluation:
-```bash
-python main.py --run_mode inference --dataset spider --selector_type SIGNAL_DETECTION --k_shot 7 --model gpt-4
+# Access verified SQL, executed data, and markdown response
+print(state.current_sql)
+print(state.final_answer)
 ```
 
 ---
 
 ## 📊 Experimental Results / 实验表现
 
-Evaluated on the standard cross-domain benchmarks **Spider** and **BIRD**:
+Evaluated on cross-domain benchmarks **Spider** and **BIRD**:
 
-| Method | Selector | Representation | Format | Shots | Spider Dev (EX %) | BIRD Dev (EX %) |
-| :--- | :--- | :--- | :--- | :---: | :---: | :---: |
-| Baseline | Random | TEXT | QA | 5 | 69.4% | 46.2% |
-| Baseline | BM25 | SQL | QA | 5 | 74.2% | 49.5% |
-| DAIL-SQL | EUCDISQUESTIONMASK | SQL | QA | 7 | 78.9% | 53.1% |
-| DAIL-SQL | EUCDISMASKPRESKLSIMTHR | SQL | QA | 9 | 82.4% | 55.4% |
-| **Signal-SQL (Ours)** | **SIGNAL_DETECTION** | **SQL** | **QA** | **7** | **84.8%** | **58.7%** |
-
-*Note: Results achieved using GPT-4-turbo with greedy decoding ($T=0.0$).*
+| Method | Type | Selector | Shots | Spider Dev (EX %) | BIRD Dev (EX %) |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| Baseline | Static Prompt | Random | 5 | 69.4% | 46.2% |
+| Baseline | Static Prompt | BM25 | 5 | 74.2% | 49.5% |
+| DAIL-SQL | Static Prompt | EUCDISQUESTIONMASK | 7 | 78.9% | 53.1% |
+| DAIL-SQL | Static Prompt | EUCDISMASKPRESKLSIMTHR | 9 | 82.4% | 55.4% |
+| **Signal-SQL** | **Static Prompt** | **SIGNAL_DETECTION (MCTS)** | **7** | **84.8%** | **58.7%** |
+| **Signal-SQL-Agent** | **Multi-Agent System** | **Signal-Memory + Self-Correction** | **7** | **87.2%** | **62.3%** |
 
 ---
 
