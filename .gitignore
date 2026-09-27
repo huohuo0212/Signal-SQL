@@ -1,0 +1,43 @@
+﻿# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and Model Weights
+*.npy
+*.npz
+*.pt
+*.pth
+*.bin
+llm_decompose_cache.json
+vector_cache/
+.cache/
+hf_cache/
+
+# Environments & Keys
+.env
+.env.local
+*.env
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+tmp/
+scratch/
+
+# Large Datasets
+dataset/
+data/
